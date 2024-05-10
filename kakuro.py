@@ -4,10 +4,9 @@ import itertools
 from colorama import Fore, Style
 
 class CSP:
-    def __init__(self, variables, domains, constraints):
-        self.variables = variables
-        self.domains = domains
-        self.constraints = constraints
+    def __init__(self):
+        self.vars = {}
+        self.constraints ={'Dif':[], 'SameDomain2': [], 'SameDomain3': [], 'NotRepeated': []}
 
     def Vars_Doms(self):
         rows = set(range(1, 10))
@@ -31,7 +30,8 @@ class CSP:
         board.append(row)
       
       return board
-
+    
+    # Restricciones de las filas.
 
     def printBoard(self, board):
       colsIndex = "ABCDEFGHI" # Columnas
@@ -62,7 +62,7 @@ class CSP:
 
 
 #run
-csp = CSP([], {}, {})
+csp = CSP()
 csp.Vars_Doms()
 board = csp.initBoard('solve.txt')
 csp.printBoard(board)
