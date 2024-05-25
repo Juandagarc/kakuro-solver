@@ -3,13 +3,15 @@ from colorama import Fore, Style
 class CSP:
     def __init__(self):
         self.vars = {}
-        self.constraints ={'Dif':[], 'SameDomain2': [], 'SameDomain3': [], 'NotRepeated': []}
+        self.constraints = {'Dif': [], 'SameDomain2': [], 'SameDomain3': [], 'NotRepeated': []}
         self.board = []
+        self.sum = {}
 
     def Vars_Doms(self):
         rows = set(range(1, 10))
         cols = 'ABCDEFGHI'
         self.vars = {f"{c}{r}": rows.copy() for c in cols for r in rows}
+        self.sum = {f"{c}{r}": {'vertical': None, 'horizontal': None} for c in cols for r in rows}
 
     def assign(self, var, value, assignment):
         assignment[var] = value
@@ -17,32 +19,58 @@ class CSP:
     def initBoard(self, nameFile):
         with open(nameFile, 'r') as file:
             lines = file.readlines()
-        
+
         self.board = []
         for line in lines:
             row = line.strip().split(' ')
-            # Se separan los objetos internos que tengan \ como separador
             row_values = []
             for value in row:
                 if '\\' in value:
                     sub_values = value.split('\\')
                     row_values.append(sub_values)
-                else:
+                elif value == "W" or value == "N":
                     row_values.append(value)
+                else:
+                    row_values.append(int(value))
             self.board.append(row_values)
-        
+
         return self.board
 
+    def getDomain(self, values):
+        for row in range(9):
+            for col in range(9):
+                cell = values[row][col]
+                if isinstance(cell, list):
+                    # Vertical sum
+                    if cell[0] != 'N':
+                        sum_value = int(cell[0])
+                        for i in range(row + 1, 9):
+                            if values[i][col] == "W":
+                                self.sum[f"{chr(65+col)}{i+1}"]['vertical'] = sum_value
+                            else:
+                                break
+                    # Horizontal sum
+                    if cell[1] != 'N':
+                        sum_value = int(cell[1])
+                        for i in range(col + 1, 9):
+                            if values[row][i] == "W":
+                                self.sum[f"{chr(65+i)}{row+1}"]['horizontal'] = sum_value
+                            else:
+                                break
+
     def printDomains(self):
-        for var, domain in self.vars.items():
-            print(f"{var}: {domain}")
+        print("Domain:")
+        for key, value in self.sum.items():
+            vertical = value['vertical']
+            horizontal = value['horizontal']
+            print(f"{key}: Vertical = {vertical}, \t Horizontal = {horizontal}")
 
     def printBoard(self):
-        colsIndex = "ABCDEFGHI" # Columnas
+        colsIndex = "ABCDEFGHI"  # Columnas
         numbers_color = Fore.GREEN
         letters_color = Fore.BLUE
         region_color = Fore.RED
-        separator = "\t" + region_color + ("+" + "-" * 15 ) * 10 + "+" + Style.RESET_ALL
+        separator = "\t" + region_color + ("+" + "-" * 15) * 10 + "+" + Style.RESET_ALL
 
         print("KAKURO SOLVER:")
         print(separator)
@@ -56,15 +84,17 @@ class CSP:
                 cell_value = self.board[i][j]
                 if isinstance(cell_value, list):
                     row_values.append(Fore.BLACK + "\\".join(map(str, cell_value)) + Style.RESET_ALL)
-                elif 'N' in str(cell_value):
+                elif cell_value == "W":
+                    row_values.append(Fore.BLACK + str(cell_value) + Style.RESET_ALL)
+                elif cell_value == "N":
                     row_values.append(Fore.BLACK + str(cell_value) + Style.RESET_ALL)
                 else:
                     row_values.append(numbers_color + str(cell_value) + Style.RESET_ALL)
-            print("\t|\t" + letters_color + str(i+1) + Style.RESET_ALL + "\t|\t" + "\t|\t".join(row_values) + "\t|")
+            print("\t|\t" + letters_color + str(i + 1) + Style.RESET_ALL + "\t|\t" + "\t|\t".join(row_values) + "\t|")
         print(separator)
 
     def solve(self):
-        assignment = {}
+        assignment = {var: None for var in self.vars}
         return self.backtrack(assignment)
 
     def backtrack(self, assignment):
@@ -92,7 +122,7 @@ class CSP:
         return None
 
     def order_domain_values(self, var, assignment):
-        return self.vars[var]
+        return list(self.vars[var])
 
     def is_consistent(self, var, value, assignment):
         for constraint in self.constraints['Dif']:
@@ -102,10 +132,11 @@ class CSP:
                     return False
         return True
 
-#run
+# Run
 csp = CSP()
 csp.Vars_Doms()
 csp.initBoard('solve.txt')
+csp.getDomain(csp.board)
 csp.printBoard()
 solution = csp.solve()
 if solution:
@@ -113,3 +144,4 @@ if solution:
     csp.printBoard()
 else:
     print("No solution found.")
+csp.printDomains()
