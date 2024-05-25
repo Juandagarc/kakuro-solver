@@ -106,6 +106,7 @@ class CSP:
         for value in self.order_domain_values(var, assignment):
             if self.is_consistent(var, value, assignment):
                 self.assign(var, value, assignment)
+                self.apply_reductions(assignment)
                 result = self.backtrack(assignment)
                 if result:
                     return result
@@ -131,6 +132,31 @@ class CSP:
                 if other in assignment and assignment[other] == value:
                     return False
         return True
+    
+    def apply_reductions(self, assignment):
+        for var, value in assignment.items():
+            if value is not None:
+                self.reduce_domain(var, value)
+
+    def reduce_domain(self, var, value):
+        for constraint in self.constraints['SameDomain2']:
+            if var in constraint:
+                other = constraint[0] if var == constraint[1] else constraint[1]
+                if value in self.vars[other]:
+                    self.vars[other].remove(value)
+
+        for constraint in self.constraints['SameDomain3']:
+            if var in constraint:
+                other1, other2 = constraint[0], constraint[1]
+                if value in self.vars[other1] and value in self.vars[other2]:
+                    self.vars[other1].remove(value)
+                    self.vars[other2].remove(value)
+
+        for constraint in self.constraints['NotRepeated']:
+            if var in constraint:
+                for other in constraint:
+                    if other != var and value in self.vars[other]:
+                        self.vars[other].remove(value)
 
 # Run
 csp = CSP()
