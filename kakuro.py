@@ -1,4 +1,5 @@
 from colorama import Fore, Style
+import copy
 
 class CSP:
     def __init__(self):
@@ -10,8 +11,8 @@ class CSP:
     def Vars_Doms(self):
         rows = set(range(1, 10))
         cols = 'ABCDEFGHI'
-        self.vars = {f"{c}{r}": rows.copy() for c in cols for r in rows}
-        self.sum = {f"{c}{r}": {'vertical': None, 'horizontal': None} for c in cols for r in rows}
+        self.vars = {f"{c}{r}": rows.copy() for c in cols for r in range(1, 10)}
+        self.sum = {f"{c}{r}": {'vertical': None, 'horizontal': None} for c in cols for r in range(1, 10)}
 
     def assign(self, var, value, assignment):
         assignment[var] = value
@@ -95,9 +96,9 @@ class CSP:
 
     def solve(self):
         assignment = {var: None for var in self.vars}
-        return self.backtrack(assignment)
+        return self.forward_checking(assignment)
 
-    def backtrack(self, assignment):
+    def forward_checking(self, assignment):
         if self.is_complete(assignment):
             return assignment
 
@@ -106,10 +107,12 @@ class CSP:
         for value in self.order_domain_values(var, assignment):
             if self.is_consistent(var, value, assignment):
                 self.assign(var, value, assignment)
-                self.apply_reductions(assignment)
-                result = self.backtrack(assignment)
-                if result:
-                    return result
+                inferences = self.inference(var, value, assignment)
+                if inferences is not None:
+                    result = self.forward_checking(assignment)
+                    if result:
+                        return result
+                self.undo_inferences(inferences)
                 assignment[var] = None  # Backtrack
         return None
 
@@ -132,31 +135,23 @@ class CSP:
                 if other in assignment and assignment[other] == value:
                     return False
         return True
-    
-    def apply_reductions(self, assignment):
-        for var, value in assignment.items():
-            if value is not None:
-                self.reduce_domain(var, value)
 
-    def reduce_domain(self, var, value):
-        for constraint in self.constraints['SameDomain2']:
-            if var in constraint:
-                other = constraint[0] if var == constraint[1] else constraint[1]
-                if value in self.vars[other]:
-                    self.vars[other].remove(value)
-
-        for constraint in self.constraints['SameDomain3']:
-            if var in constraint:
-                other1, other2 = constraint[0], constraint[1]
-                if value in self.vars[other1] and value in self.vars[other2]:
-                    self.vars[other1].remove(value)
-                    self.vars[other2].remove(value)
-
+    def inference(self, var, value, assignment):
+        inferences = []
         for constraint in self.constraints['NotRepeated']:
             if var in constraint:
                 for other in constraint:
                     if other != var and value in self.vars[other]:
                         self.vars[other].remove(value)
+                        inferences.append((other, value))
+                        if not self.vars[other]:
+                            self.undo_inferences(inferences)
+                            return None
+        return inferences
+
+    def undo_inferences(self, inferences):
+        for var, value in inferences:
+            self.vars[var].add(value)
 
 # Run
 csp = CSP()
